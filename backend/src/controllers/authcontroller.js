@@ -41,16 +41,21 @@ exports.verifyEmail = async (req, res) => {
     try {
         const decoded = jwt.verify(req.params.token, process.env.JWT_SECRET);
 
-        await User.update(
-            { isVerified: true },
-            { where: { id: decoded.id } }
-        );
+        const user = await User.findByPk(decoded.id);
+
+        if (!user) {
+            return res.status(404).send('User not found');
+        }
+
+        user.isVerified = true;
+        await user.save();
 
         res.send('Email verified successfully');
     } catch (err) {
         res.status(400).send('Invalid or expired token');
     }
 };
+
 
 exports.login = async (req, res) => {
     try {
@@ -75,7 +80,15 @@ exports.login = async (req, res) => {
             process.env.JWT_SECRET
         );
 
-        res.json({ token });
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email
+            }
+        });
     } catch (err) {
         res.status(500).json({ message: 'Login failed' });
     }
